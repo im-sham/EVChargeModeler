@@ -19,6 +19,18 @@ interface DCFResults {
   cashFlows: number[];
 }
 
+// NPV calculation function as specified in PRD
+export function calculateNPV(inputs: DCFInputs): number {
+  let cashFlows = [];
+  const annualKWh = inputs.chargerCount * inputs.peakUtilization * 365 * 1000; // Est. kWh/year per charger
+  for (let t = 0; t < (inputs.projectLife || 10); t++) {
+    let revenue = annualKWh * inputs.chargingRate; // Revenue from kWh
+    let costs = inputs.capex * inputs.chargerCount * inputs.opex; // Annual OpEx
+    cashFlows.push(revenue - costs);
+  }
+  return evaluate(`npv(${JSON.stringify(cashFlows)}, ${inputs.discountRate || 0.10})`) - (inputs.capex * inputs.chargerCount); // Initial investment
+}
+
 export function calculateDCF(inputs: DCFInputs): DCFResults {
   const {
     capex,
