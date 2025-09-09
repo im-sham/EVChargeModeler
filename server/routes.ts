@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema, insertSOWDocumentSchema } from "@shared/schema";
-import { calculateDCF } from "../client/src/lib/calculations";
+// Remove import - will define locally
 import multer from "multer";
 import { parseSOWDocument } from "../client/src/lib/file-parser";
 
@@ -10,6 +10,77 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
+
+// Simple DCF calculation for server-side use
+function calculateDCF(inputs: {
+  capex: number;
+  opex: number;
+  chargerCount: number;
+  peakUtilization: number;
+  chargingRate: number;
+  lcfsCredits?: number;
+  stateRebate?: number;
+  projectLife?: number;
+  discountRate?: number;
+}) {
+  const {
+    capex,
+    opex,
+    chargerCount,
+    peakUtilization,
+    chargingRate,
+    lcfsCredits = 0,
+    stateRebate = 0,
+    projectLife = 10,
+    discountRate = 0.10,
+  } = inputs;
+
+  // Calculate cash flows
+  const cashFlows: number[] = [];
+  const annualKWh = chargerCount * peakUtilization * 365 * 1000; // kWh per year
+  
+  // Year 0: Initial investment minus rebates
+  cashFlows.push(-(capex * chargerCount - stateRebate));
+
+  // Years 1-N: Operating cash flows
+  for (let year = 1; year <= projectLife; year++) {
+    const revenue = annualKWh * chargingRate;
+    const lcfsRevenue = annualKWh * 0.0004 * lcfsCredits; // rough LCFS calculation
+    const costs = opex; // Annual OpEx
+    cashFlows.push(revenue + lcfsRevenue - costs);
+  }
+
+  // Simple NPV calculation
+  let npv = 0;
+  cashFlows.forEach((cf, i) => {
+    npv += cf / Math.pow(1 + discountRate, i);
+  });
+
+  // Simple IRR estimation (approximation)
+  let irr = discountRate;
+  for (let rate = 0.01; rate <= 0.5; rate += 0.01) {
+    let testNpv = 0;
+    cashFlows.forEach((cf, i) => {
+      testNpv += cf / Math.pow(1 + rate, i);
+    });
+    if (Math.abs(testNpv) < Math.abs(npv)) {
+      irr = rate;
+      npv = testNpv;
+    }
+  }
+
+  // LCOC calculation
+  const totalCosts = capex * chargerCount + (opex * projectLife);
+  const totalKWh = annualKWh * projectLife;
+  const lcoc = totalCosts / totalKWh;
+
+  return {
+    npv: Math.round(npv),
+    irr: Math.round(irr * 10000) / 100, // percentage with 2 decimal places
+    lcoc: Math.round(lcoc * 1000) / 1000, // $/kWh with 3 decimal places
+    cashFlows
+  };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
@@ -40,24 +111,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectData = insertProjectSchema.parse(req.body);
       
+      // Ensure required numeric fields have defaults
+      if (!projectData.chargerCount) projectData.chargerCount = 4;
+      
       // Calculate DCF metrics
       const dcfResults = calculateDCF({
         capex: parseFloat(projectData.capex),
         opex: parseFloat(projectData.opex),
         chargerCount: projectData.chargerCount,
-        peakUtilization: parseFloat(projectData.peakUtilization),
+        peakUtilization: parseFloat(projectData.peakUtilization) / 100, // Convert percentage to decimal
         chargingRate: parseFloat(projectData.chargingRate),
         lcfsCredits: projectData.lcfsCredits ? parseFloat(projectData.lcfsCredits) : 0,
         stateRebate: projectData.stateRebate ? parseFloat(projectData.stateRebate) : 0,
+        projectLife: projectData.projectLife || 10,
+        discountRate: projectData.discountRate ? parseFloat(projectData.discountRate) / 100 : 0.10,
       });
 
-      const project = await storage.createProject({
+      // Create project with calculated metrics
+      const projectToCreate = {
         ...projectData,
         npv: dcfResults.npv.toString(),
         irr: dcfResults.irr.toString(),
         lcoc: dcfResults.lcoc.toString(),
         cashFlows: dcfResults.cashFlows,
-      });
+      };
+      
+      const project = await storage.createProject(projectToCreate);
       
       res.status(201).json(project);
     } catch (error) {
@@ -86,10 +165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           capex: parseFloat(updatedData.capex),
           opex: parseFloat(updatedData.opex),
           chargerCount: updatedData.chargerCount,
-          peakUtilization: parseFloat(updatedData.peakUtilization),
+          peakUtilization: parseFloat(updatedData.peakUtilization) / 100, // Convert percentage to decimal
           chargingRate: parseFloat(updatedData.chargingRate),
           lcfsCredits: updatedData.lcfsCredits ? parseFloat(updatedData.lcfsCredits) : 0,
           stateRebate: updatedData.stateRebate ? parseFloat(updatedData.stateRebate) : 0,
+          projectLife: updatedData.projectLife || 10,
+          discountRate: updatedData.discountRate ? parseFloat(updatedData.discountRate) / 100 : 0.10,
         });
       }
 

@@ -179,7 +179,7 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
     }
   };
 
-  const formatCurrency = (value: string | undefined) => {
+  const formatCurrency = (value: string | null | undefined) => {
     if (!value) return "N/A";
     const num = parseFloat(value);
     return new Intl.NumberFormat('en-US', {
@@ -190,7 +190,7 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
     }).format(num);
   };
 
-  const formatPercentage = (value: string | undefined) => {
+  const formatPercentage = (value: string | null | undefined) => {
     if (!value) return "N/A";
     const num = parseFloat(value) * 100;
     return `${num.toFixed(1)}%`;
@@ -249,7 +249,7 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Input {...field} data-testid="input-description" />
+                            <Input {...field} value={field.value || ""} data-testid="input-description" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

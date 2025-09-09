@@ -40,17 +40,12 @@ export const sowDocuments = pgTable("sow_documents", {
 
 export const insertProjectSchema = createInsertSchema(projects).omit({
   id: true,
-  npv: true,
-  irr: true,
-  lcoc: true,
-  cashFlows: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertSOWDocumentSchema = createInsertSchema(sowDocuments).omit({
   id: true,
-  extractedExpenses: true,
   processed: true,
   createdAt: true,
 });
