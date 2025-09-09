@@ -15,24 +15,24 @@
   --elevate-2: rgba(0,0,0, .08);
 
   --background: 248 250 252; /* slate-50 */
-  --foreground: 15 23 42; /* slate-900 */
+  --foreground: 2 6 23; /* slate-950 */
   --border: 226 232 240; /* slate-200 */
 
   --card: 255 255 255; /* white */
-  --card-foreground: 15 23 42; /* slate-900 */
+  --card-foreground: 2 6 23; /* slate-950 */
   --card-border: 226 232 240; /* slate-200 */
 
   --sidebar: 255 255 255; /* white */
-  --sidebar-foreground: 15 23 42; /* slate-900 */
+  --sidebar-foreground: 2 6 23; /* slate-950 */
   --sidebar-border: 226 232 240; /* slate-200 */
   --sidebar-primary: 30 64 175; /* blue-700 */
   --sidebar-primary-foreground: 248 250 252; /* slate-50 */
   --sidebar-accent: 241 245 249; /* slate-100 */
-  --sidebar-accent-foreground: 15 23 42; /* slate-900 */
+  --sidebar-accent-foreground: 2 6 23; /* slate-950 */
   --sidebar-ring: 30 64 175; /* blue-700 */
 
   --popover: 255 255 255; /* white */
-  --popover-foreground: 15 23 42; /* slate-900 */
+  --popover-foreground: 2 6 23; /* slate-950 */
   --popover-border: 226 232 240; /* slate-200 */
 
   --primary: 30 64 175; /* blue-700 */
@@ -42,7 +42,7 @@
   --secondary-foreground: 248 250 252; /* slate-50 */
 
   --muted: 241 245 249; /* slate-100 */
-  --muted-foreground: 100 116 139; /* slate-500 */
+  --muted-foreground: 71 85 105; /* slate-600 */
 
   --accent: 34 197 94; /* green-500 */
   --accent-foreground: 255 255 255; /* white */
