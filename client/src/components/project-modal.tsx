@@ -47,8 +47,12 @@ const formSchema = insertProjectSchema.extend({
   opex: z.string().min(1, "OpEx is required"),
   peakUtilization: z.string().min(1, "Peak utilization is required"),
   chargingRate: z.string().min(1, "Charging rate is required"),
+  projectLife: z.number().min(5).max(20).optional(),
+  discountRate: z.string().optional(),
   lcfsCredits: z.string().optional(),
   stateRebate: z.string().optional(),
+  energiizeRebate: z.string().optional(),
+  utilityRebate: z.string().optional(),
 });
 
 export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModalProps) {
@@ -67,8 +71,12 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
       opex: project?.opex || "",
       peakUtilization: project?.peakUtilization || "",
       chargingRate: project?.chargingRate || "",
+      projectLife: project?.projectLife || 10,
+      discountRate: project?.discountRate || "",
       lcfsCredits: project?.lcfsCredits || "",
       stateRebate: project?.stateRebate || "",
+      energiizeRebate: project?.energiizeRebate || "",
+      utilityRebate: project?.utilityRebate || "",
     },
   });
 
@@ -80,8 +88,11 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
         opex: parseFloat(data.opex),
         peakUtilization: parseFloat(data.peakUtilization),
         chargingRate: parseFloat(data.chargingRate),
+        discountRate: data.discountRate ? parseFloat(data.discountRate) : undefined,
         lcfsCredits: data.lcfsCredits ? parseFloat(data.lcfsCredits) : undefined,
         stateRebate: data.stateRebate ? parseFloat(data.stateRebate) : undefined,
+        energiizeRebate: data.energiizeRebate ? parseFloat(data.energiizeRebate) : undefined,
+        utilityRebate: data.utilityRebate ? parseFloat(data.utilityRebate) : undefined,
       });
       return response.json();
     },
@@ -112,8 +123,11 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
         opex: parseFloat(data.opex),
         peakUtilization: parseFloat(data.peakUtilization),
         chargingRate: parseFloat(data.chargingRate),
+        discountRate: data.discountRate ? parseFloat(data.discountRate) : undefined,
         lcfsCredits: data.lcfsCredits ? parseFloat(data.lcfsCredits) : undefined,
         stateRebate: data.stateRebate ? parseFloat(data.stateRebate) : undefined,
+        energiizeRebate: data.energiizeRebate ? parseFloat(data.energiizeRebate) : undefined,
+        utilityRebate: data.utilityRebate ? parseFloat(data.utilityRebate) : undefined,
       });
       return response.json();
     },
@@ -386,6 +400,81 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
                             <FormLabel>State Rebate ($)</FormLabel>
                             <FormControl>
                               <Input {...field} type="number" placeholder="50000" data-testid="input-state-rebate" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-foreground">Project Parameters</h3>
+                      
+                      <FormField
+                        control={form.control}
+                        name="projectLife"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Project Horizon (years)</FormLabel>
+                            <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-project-life">
+                                  <SelectValue placeholder="Select project life" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="10">10 years</SelectItem>
+                                <SelectItem value="15">15 years</SelectItem>
+                                <SelectItem value="20">20 years</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="discountRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount Rate (%)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" step="0.1" placeholder="10.0" data-testid="input-discount-rate" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-foreground">Additional Incentives</h3>
+                      
+                      <FormField
+                        control={form.control}
+                        name="energiizeRebate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>EnergIIZE Rebate ($)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" placeholder="100000" data-testid="input-energiize-rebate" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="utilityRebate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Utility Rebate (PG&E/SCE) ($)</FormLabel>
+                            <FormControl>
+                              <Input {...field} type="number" placeholder="25000" data-testid="input-utility-rebate" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
