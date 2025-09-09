@@ -230,7 +230,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const document = await storage.createSOWDocument({
         ...documentData,
         extractedExpenses,
-        processed: true,
       });
 
       res.status(201).json(document);
