@@ -84,15 +84,16 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const response = await apiRequest("POST", "/api/projects", {
         ...data,
-        capex: parseFloat(data.capex),
-        opex: parseFloat(data.opex),
-        peakUtilization: parseFloat(data.peakUtilization),
-        chargingRate: parseFloat(data.chargingRate),
-        discountRate: data.discountRate ? parseFloat(data.discountRate) : undefined,
-        lcfsCredits: data.lcfsCredits ? parseFloat(data.lcfsCredits) : undefined,
-        stateRebate: data.stateRebate ? parseFloat(data.stateRebate) : undefined,
-        energiizeRebate: data.energiizeRebate ? parseFloat(data.energiizeRebate) : undefined,
-        utilityRebate: data.utilityRebate ? parseFloat(data.utilityRebate) : undefined,
+        // Keep decimal fields as strings to match server expectations
+        capex: data.capex,
+        opex: data.opex,
+        peakUtilization: data.peakUtilization,
+        chargingRate: data.chargingRate,
+        discountRate: data.discountRate || undefined,
+        lcfsCredits: data.lcfsCredits || undefined,
+        stateRebate: data.stateRebate || undefined,
+        energiizeRebate: data.energiizeRebate || undefined,
+        utilityRebate: data.utilityRebate || undefined,
       });
       return response.json();
     },
@@ -119,15 +120,16 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
     mutationFn: async (data: z.infer<typeof formSchema>) => {
       const response = await apiRequest("PUT", `/api/projects/${project!.id}`, {
         ...data,
-        capex: parseFloat(data.capex),
-        opex: parseFloat(data.opex),
-        peakUtilization: parseFloat(data.peakUtilization),
-        chargingRate: parseFloat(data.chargingRate),
-        discountRate: data.discountRate ? parseFloat(data.discountRate) : undefined,
-        lcfsCredits: data.lcfsCredits ? parseFloat(data.lcfsCredits) : undefined,
-        stateRebate: data.stateRebate ? parseFloat(data.stateRebate) : undefined,
-        energiizeRebate: data.energiizeRebate ? parseFloat(data.energiizeRebate) : undefined,
-        utilityRebate: data.utilityRebate ? parseFloat(data.utilityRebate) : undefined,
+        // Keep decimal fields as strings to match server expectations
+        capex: data.capex,
+        opex: data.opex,
+        peakUtilization: data.peakUtilization,
+        chargingRate: data.chargingRate,
+        discountRate: data.discountRate || undefined,
+        lcfsCredits: data.lcfsCredits || undefined,
+        stateRebate: data.stateRebate || undefined,
+        energiizeRebate: data.energiizeRebate || undefined,
+        utilityRebate: data.utilityRebate || undefined,
       });
       return response.json();
     },
