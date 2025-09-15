@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -9,7 +9,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CloudUpload, FileText, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CloudUpload, FileText, X, FolderOpen } from "lucide-react";
+import type { Project } from "@shared/schema";
 
 interface UploadModalProps {
   open: boolean;
@@ -25,23 +33,30 @@ interface UploadedFile {
 
 export function UploadModal({ open, onOpenChange }: UploadModalProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+    enabled: open,
+  });
+
   const uploadMutation = useMutation({
-    mutationFn: async (files: UploadedFile[]) => {
+    mutationFn: async ({ projectId, files }: { projectId: string; files: UploadedFile[] }) => {
       const promises = files.map(async ({ file }) => {
         const formData = new FormData();
         formData.append('file', file);
         
-        const response = await fetch('/api/projects/temp/sow-documents', {
+        const response = await fetch(`/api/projects/${projectId}/sow-documents`, {
           method: 'POST',
           body: formData,
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to upload ${file.name}`);
+          const error = await response.text();
+          throw new Error(`Failed to upload ${file.name}: ${error}`);
         }
         
         return response.json();
@@ -49,12 +64,15 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
       
       return Promise.all(promises);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast({
         title: "Success",
-        description: "Files uploaded and processed successfully",
+        description: `${data.length} file(s) uploaded and processed successfully`,
       });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${selectedProjectId}/sow-documents`] });
       setUploadedFiles([]);
+      setSelectedProjectId("");
       onOpenChange(false);
     },
     onError: (error) => {
@@ -125,6 +143,29 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Project Selection */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Select Project</label>
+            <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <SelectTrigger data-testid="select-project">
+                <SelectValue placeholder="Choose a project to associate documents with" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="h-4 w-4" />
+                      <span>{project.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {projects.length === 0 && (
+              <p className="text-sm text-muted-foreground">No projects available. Create a project first.</p>
+            )}
+          </div>
+
           <div
             className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer hover-elevate"
             onClick={() => fileInputRef.current?.click()}
@@ -188,8 +229,8 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
             Cancel
           </Button>
           <Button
-            onClick={() => uploadMutation.mutate(uploadedFiles)}
-            disabled={uploadedFiles.length === 0 || uploadMutation.isPending}
+            onClick={() => uploadMutation.mutate({ projectId: selectedProjectId, files: uploadedFiles })}
+            disabled={uploadedFiles.length === 0 || !selectedProjectId || uploadMutation.isPending}
             data-testid="button-process-files"
           >
             {uploadMutation.isPending ? "Processing..." : "Process Files"}

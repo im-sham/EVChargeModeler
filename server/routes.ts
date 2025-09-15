@@ -2,9 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertProjectSchema, insertSOWDocumentSchema } from "@shared/schema";
-// Remove import - will define locally
 import multer from "multer";
-import { parseSOWDocument } from "./lib/file-parser";
+import { parseSOWDocument, categorizeExpensesForDCF } from "./lib/file-parser";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -250,12 +249,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Parse the document to extract expenses
-      const extractedExpenses = await parseSOWDocument(req.file.buffer, req.file.mimetype);
+      const parsedData = await parseSOWDocument(req.file.buffer, req.file.mimetype);
 
       const document = await storage.createSOWDocument({
         ...documentData,
-        extractedExpenses,
+        extractedExpenses: parsedData.expenses,
       });
+
+      // If we have extracted expenses, log the financial categorization
+      if (parsedData.expenses && parsedData.expenses.length > 0) {
+        const { capex, opex, breakdown } = categorizeExpensesForDCF(parsedData.expenses);
+        console.log(`Extracted CapEx from SOW: ${capex}, OpEx: ${opex}`);
+        console.log(`Expense breakdown:`, breakdown);
+      }
 
       res.status(201).json(document);
     } catch (error) {

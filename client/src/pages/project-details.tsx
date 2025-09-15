@@ -1,5 +1,7 @@
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +16,9 @@ import {
   DollarSign,
   Zap,
   Calendar,
-  BatteryCharging
+  BatteryCharging,
+  Package,
+  Receipt
 } from "lucide-react";
 import type { Project, SOWDocument } from "@shared/schema";
 
@@ -22,6 +26,7 @@ export default function ProjectDetails() {
   const params = useParams();
   const [, navigate] = useLocation();
   const projectId = params.id;
+  const { toast } = useToast();
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
@@ -192,6 +197,182 @@ export default function ProjectDetails() {
               </CardContent>
             </Card>
 
+            {/* SOW Documents & Extracted Expenses */}
+            {sowDocuments.length > 0 && sowDocuments.some(doc => doc.extractedExpenses) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Receipt className="h-5 w-5" />
+                    SOW Document Expenses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {sowDocuments.filter(doc => doc.extractedExpenses).map((doc) => (
+                    <div key={doc.id} className="border border-border rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-sm" data-testid={`text-sow-filename-${doc.id}`}>
+                            {doc.filename}
+                          </span>
+                        </div>
+                        <Badge variant="secondary" data-testid={`badge-sow-status-${doc.id}`}>
+                          Processed
+                        </Badge>
+                      </div>
+                      
+                      {doc.extractedExpenses && Array.isArray(doc.extractedExpenses) && (doc.extractedExpenses as any[]).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-muted-foreground">Expense Breakdown:</p>
+                          <div className="space-y-2">
+                            {(doc.extractedExpenses as any[]).map((expense: any, idx: number) => (
+                              <div key={idx} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  <Package className="h-3 w-3 text-muted-foreground" />
+                                  <div>
+                                    <span className="text-sm font-medium" data-testid={`text-expense-category-${doc.id}-${idx}`}>
+                                      {expense.category}
+                                    </span>
+                                    <p className="text-xs text-muted-foreground">
+                                      {expense.description}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-semibold text-sm" data-testid={`text-expense-amount-${doc.id}-${idx}`}>
+                                    {formatCurrency(expense.amount)}
+                                  </p>
+                                  {expense.quantity && (
+                                    <p className="text-xs text-muted-foreground">
+                                      {expense.quantity} {expense.unit || 'units'}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="pt-3 mt-3 border-t border-border">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Total SOW Amount:</span>
+                              <span className="font-bold text-accent" data-testid={`text-sow-total-${doc.id}`}>
+                                {formatCurrency(
+                                  (doc.extractedExpenses as any[]).reduce(
+                                    (sum: number, exp: any) => sum + (exp.amount || 0),
+                                    0
+                                  )
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Total from all SOW documents with Apply button */}
+                  {(() => {
+                    const totalSOWAmount = sowDocuments.reduce((total, doc) => {
+                      if (doc.extractedExpenses && Array.isArray(doc.extractedExpenses)) {
+                        return total + (doc.extractedExpenses as any[]).reduce(
+                          (sum: number, exp: any) => sum + (exp.amount || 0),
+                          0
+                        );
+                      }
+                      return total;
+                    }, 0);
+                    const sowCapexPerCharger = totalSOWAmount / project.chargerCount;
+                    const currentCapex = parseFloat(project.capex);
+                    const isDifferent = Math.abs(sowCapexPerCharger - currentCapex) > 1;
+
+                    const applySOWMutation = useMutation({
+                      mutationFn: async () => {
+                        return apiRequest(
+                          "PUT",
+                          `/api/projects/${projectId}`,
+                          { capex: sowCapexPerCharger.toString() }
+                        );
+                      },
+                      onSuccess: () => {
+                        toast({
+                          title: "Success",
+                          description: "Project updated with SOW-extracted CapEx",
+                        });
+                        queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}`] });
+                      },
+                      onError: () => {
+                        toast({
+                          title: "Error",
+                          description: "Failed to update project",
+                          variant: "destructive",
+                        });
+                      },
+                    });
+
+                    return (
+                      <>
+                        {sowDocuments.filter(doc => doc.extractedExpenses).length > 1 && (
+                          <div className="pt-3 mt-3 border-t border-border">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">Total from All SOW Documents:</span>
+                              <span className="font-bold text-lg text-accent">
+                                {formatCurrency(totalSOWAmount)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Comparison and Apply Button */}
+                        <div className="pt-3 mt-3 border-t border-border space-y-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">SOW CapEx per Charger:</span>
+                              <span className="font-medium" data-testid="text-sow-capex-per-charger">
+                                {formatCurrency(sowCapexPerCharger)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Current CapEx per Charger:</span>
+                              <span className="font-medium">
+                                {formatCurrency(currentCapex)}
+                              </span>
+                            </div>
+                            {isDifferent && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Difference:</span>
+                                <span className={`font-medium ${sowCapexPerCharger > currentCapex ? 'text-destructive' : 'text-accent'}`}>
+                                  {sowCapexPerCharger > currentCapex ? '+' : ''}
+                                  {formatCurrency(sowCapexPerCharger - currentCapex)}
+                                  ({((sowCapexPerCharger - currentCapex) / currentCapex * 100).toFixed(1)}%)
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {isDifferent && (
+                            <Button 
+                              onClick={() => applySOWMutation.mutate()}
+                              disabled={applySOWMutation.isPending}
+                              className="w-full"
+                              variant="default"
+                              data-testid="button-apply-sow-capex"
+                            >
+                              {applySOWMutation.isPending ? "Applying..." : "Apply SOW CapEx to Project"}
+                            </Button>
+                          )}
+                          
+                          {!isDifferent && (
+                            <p className="text-sm text-center text-muted-foreground py-2">
+                              ✓ Project already using SOW-extracted CapEx
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Financial Inputs */}
             <Card>
               <CardHeader>
@@ -287,22 +468,22 @@ export default function ProjectDetails() {
                 <div>
                   <p className="text-sm text-muted-foreground">Created</p>
                   <p className="font-semibold">
-                    {new Date(project.createdAt).toLocaleDateString()}
+                    {new Date(project.createdAt || Date.now()).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Last Updated</p>
                   <p className="font-semibold">
-                    {new Date(project.updatedAt).toLocaleDateString()}
+                    {new Date(project.updatedAt || Date.now()).toLocaleDateString()}
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* SOW Documents */}
+            {/* SOW Documents List */}
             <Card>
               <CardHeader>
-                <CardTitle>SOW Documents</CardTitle>
+                <CardTitle>Uploaded Documents</CardTitle>
               </CardHeader>
               <CardContent>
                 {documentsLoading ? (
@@ -319,14 +500,18 @@ export default function ProjectDetails() {
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{doc.filename}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(doc.uploadedAt).toLocaleDateString()}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(doc.createdAt || Date.now()).toLocaleDateString()}
+                              </p>
+                              {doc.processed && (
+                                <Badge variant="outline" className="text-xs h-4">
+                                  Processed
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <Button variant="ghost" size="icon" data-testid={`button-download-${doc.id}`}>
-                          <Download className="h-4 w-4" />
-                        </Button>
                       </div>
                     ))}
                   </div>
