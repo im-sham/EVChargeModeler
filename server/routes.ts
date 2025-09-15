@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertProjectSchema, insertSOWDocumentSchema } from "@shared/schema";
 // Remove import - will define locally
 import multer from "multer";
-import { parseSOWDocument } from "../client/src/lib/file-parser";
+import { parseSOWDocument } from "./lib/file-parser";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -35,19 +35,25 @@ function calculateDCF(inputs: {
     discountRate = 0.10,
   } = inputs;
 
-  // Calculate cash flows
+  // Calculate cash flows with improved formulas
   const cashFlows: number[] = [];
-  const annualKWh = chargerCount * peakUtilization * 365 * 1000; // kWh per year
+  const chargerPowerKW = 350; // DC Ultra Fast charging
+  const hoursPerDay = 16; // Operating hours
+  const daysPerYear = 365;
+  const annualKWhPerCharger = chargerPowerKW * hoursPerDay * daysPerYear * peakUtilization;
+  const totalAnnualKWh = annualKWhPerCharger * chargerCount;
   
   // Year 0: Initial investment minus rebates
-  cashFlows.push(-(capex * chargerCount - stateRebate));
+  const initialInvestment = capex * chargerCount - stateRebate;
+  cashFlows.push(-initialInvestment);
 
   // Years 1-N: Operating cash flows
   for (let year = 1; year <= projectLife; year++) {
-    const revenue = annualKWh * chargingRate;
-    const lcfsRevenue = annualKWh * 0.0004 * lcfsCredits; // rough LCFS calculation
-    const costs = opex; // Annual OpEx
-    cashFlows.push(revenue + lcfsRevenue - costs);
+    const revenue = totalAnnualKWh * chargingRate;
+    const lcfsRevenue = totalAnnualKWh * 0.0004 * lcfsCredits; // LCFS calculation
+    const annualOpex = opex * capex * chargerCount; // OpEx as % of CapEx
+    const netCashFlow = revenue + lcfsRevenue - annualOpex;
+    cashFlows.push(netCashFlow);
   }
 
   // Simple NPV calculation
@@ -56,23 +62,42 @@ function calculateDCF(inputs: {
     npv += cf / Math.pow(1 + discountRate, i);
   });
 
-  // Simple IRR estimation (approximation)
-  let irr = discountRate;
-  for (let rate = 0.01; rate <= 0.5; rate += 0.01) {
-    let testNpv = 0;
-    cashFlows.forEach((cf, i) => {
-      testNpv += cf / Math.pow(1 + rate, i);
+  // Newton-Raphson method for IRR calculation
+  let irr = 0.10; // Initial guess
+  const maxIterations = 50;
+  const tolerance = 0.00001;
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let f = 0; // NPV at current rate
+    let df = 0; // Derivative of NPV
+    
+    cashFlows.forEach((cf, t) => {
+      const divisor = Math.pow(1 + irr, t);
+      f += cf / divisor;
+      if (t > 0) {
+        df -= t * cf / Math.pow(1 + irr, t + 1);
+      }
     });
-    if (Math.abs(testNpv) < Math.abs(npv)) {
-      irr = rate;
-      npv = testNpv;
+    
+    const newIrr = irr - f / df;
+    
+    if (Math.abs(newIrr - irr) < tolerance) {
+      irr = newIrr;
+      break;
     }
+    irr = newIrr;
+    
+    // Bound IRR to reasonable range
+    if (irr < -0.99) irr = -0.99;
+    if (irr > 10) irr = 10;
   }
 
-  // LCOC calculation
-  const totalCosts = capex * chargerCount + (opex * projectLife);
-  const totalKWh = annualKWh * projectLife;
-  const lcoc = totalCosts / totalKWh;
+  // LCOC calculation (Levelized Cost of Charging)
+  const totalCapex = capex * chargerCount;
+  const totalOpex = opex * capex * chargerCount * projectLife; // OpEx as % of CapEx
+  const totalCosts = totalCapex + totalOpex - stateRebate;
+  const totalKWh = totalAnnualKWh * projectLife;
+  const lcoc = totalKWh > 0 ? totalCosts / totalKWh : 0;
 
   return {
     npv: Math.round(npv),
@@ -267,7 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalProjects,
         totalChargers,
         avgNPV: avgNPV / 1000000, // Convert to millions
-        avgIRR: avgIRR * 100, // Convert to percentage
+        avgIRR: avgIRR, // Already stored as percentage
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);

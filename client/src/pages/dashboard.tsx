@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,16 +22,22 @@ import {
 import type { Project } from "@shared/schema";
 
 export default function Dashboard() {
+  const [, navigate] = useLocation();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isNewProject, setIsNewProject] = useState(false);
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading } = useQuery<{
+    totalProjects: number;
+    totalChargers: number;
+    avgNPV: number;
+    avgIRR: number;
+  }>({
     queryKey: ["/api/dashboard/stats"],
   });
 
@@ -192,7 +199,7 @@ export default function Dashboard() {
                       </div>
                     ))}
                   </div>
-                ) : projects.length === 0 ? (
+                ) : (projects as Project[]).length === 0 ? (
                   <div className="text-center py-8">
                     <BatteryCharging className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">No projects yet</h3>
@@ -204,11 +211,11 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {projects.slice(0, 5).map((project: Project) => (
+                    {(projects as Project[]).slice(0, 5).map((project: Project) => (
                       <div
                         key={project.id}
                         className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer hover-elevate"
-                        onClick={() => handleOpenProject(project)}
+                        onClick={() => navigate(`/projects/${project.id}`)}
                         data-testid={`card-project-${project.id}`}
                       >
                         <div className="flex items-center space-x-4">
@@ -218,7 +225,7 @@ export default function Dashboard() {
                           <div>
                             <h4 className="font-medium text-foreground">{project.name}</h4>
                             <p className="text-sm text-muted-foreground">
-                              {project.chargerCount} Chargers • Created {new Date(project.createdAt).toLocaleDateString()}
+                              {project.chargerCount} Chargers • Created {new Date(project.createdAt || Date.now()).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -227,7 +234,7 @@ export default function Dashboard() {
                             NPV: {project.npv ? formatCurrency(parseFloat(project.npv)) : "N/A"}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            IRR: {project.irr ? formatPercentage(parseFloat(project.irr) * 100) : "N/A"}
+                            IRR: {project.irr ? formatPercentage(parseFloat(project.irr)) : "N/A"}
                           </p>
                         </div>
                       </div>

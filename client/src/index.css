@@ -25,17 +25,17 @@
   --sidebar: 255 255 255; /* white */
   --sidebar-foreground: 2 6 23; /* slate-950 */
   --sidebar-border: 226 232 240; /* slate-200 */
-  --sidebar-primary: 30 64 175; /* blue-700 */
+  --sidebar-primary: 29 78 216; /* blue-700 */
   --sidebar-primary-foreground: 248 250 252; /* slate-50 */
   --sidebar-accent: 241 245 249; /* slate-100 */
   --sidebar-accent-foreground: 2 6 23; /* slate-950 */
-  --sidebar-ring: 30 64 175; /* blue-700 */
+  --sidebar-ring: 29 78 216; /* blue-700 */
 
   --popover: 255 255 255; /* white */
   --popover-foreground: 2 6 23; /* slate-950 */
   --popover-border: 226 232 240; /* slate-200 */
 
-  --primary: 30 64 175; /* blue-700 */
+  --primary: 29 78 216; /* blue-700 */
   --primary-foreground: 248 250 252; /* slate-50 */
 
   --secondary: 100 116 139; /* slate-500 */
@@ -44,16 +44,16 @@
   --muted: 241 245 249; /* slate-100 */
   --muted-foreground: 71 85 105; /* slate-600 */
 
-  --accent: 34 197 94; /* green-500 */
+  --accent: 16 185 129; /* emerald-500 */
   --accent-foreground: 255 255 255; /* white */
 
   --destructive: 239 68 68; /* red-500 */
   --destructive-foreground: 248 250 252; /* slate-50 */
 
   --input: 226 232 240; /* slate-200 */
-  --ring: 30 64 175; /* blue-700 */
+  --ring: 29 78 216; /* blue-700 */
   
-  --chart-1: 34 197 94; /* green-500 */
+  --chart-1: 16 185 129; /* emerald-500 */
   --chart-2: 59 130 246; /* blue-500 */
   --chart-3: 168 85 247; /* purple-500 */
   --chart-4: 251 146 60; /* orange-400 */

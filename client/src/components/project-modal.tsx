@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -55,8 +55,101 @@ const formSchema = insertProjectSchema.extend({
   utilityRebate: z.string().optional(),
 });
 
+// Real-time DCF calculation function
+function calculateRealtimeDCF(values: any) {
+  const capex = parseFloat(values.capex || "0");
+  const opex = parseFloat(values.opex || "0");
+  const chargerCount = values.chargerCount || 4;
+  const peakUtilization = parseFloat(values.peakUtilization || "0") / 100;
+  const chargingRate = parseFloat(values.chargingRate || "0");
+  const lcfsCredits = parseFloat(values.lcfsCredits || "0");
+  const stateRebate = parseFloat(values.stateRebate || "0");
+  const projectLife = values.projectLife || 10;
+  const discountRate = parseFloat(values.discountRate || "10") / 100;
+
+  if (!capex || !opex || !peakUtilization || !chargingRate) {
+    return { npv: 0, irr: 0, lcoc: 0, cashFlows: [] };
+  }
+
+  // Calculate cash flows
+  const cashFlows: number[] = [];
+  const chargerPowerKW = 350;
+  const hoursPerDay = 16;
+  const daysPerYear = 365;
+  const annualKWhPerCharger = chargerPowerKW * hoursPerDay * daysPerYear * peakUtilization;
+  const totalAnnualKWh = annualKWhPerCharger * chargerCount;
+  
+  // Year 0: Initial investment
+  const initialInvestment = capex * chargerCount - stateRebate;
+  cashFlows.push(-initialInvestment);
+
+  // Years 1-N: Operating cash flows
+  for (let year = 1; year <= projectLife; year++) {
+    const revenue = totalAnnualKWh * chargingRate;
+    const lcfsRevenue = totalAnnualKWh * 0.0004 * lcfsCredits;
+    const annualOpex = opex * capex * chargerCount; // OpEx as % of CapEx
+    const netCashFlow = revenue + lcfsRevenue - annualOpex;
+    cashFlows.push(netCashFlow);
+  }
+
+  // NPV calculation
+  let npv = 0;
+  cashFlows.forEach((cf, i) => {
+    npv += cf / Math.pow(1 + discountRate, i);
+  });
+
+  // IRR calculation using Newton-Raphson
+  let irr = 0.10;
+  const maxIterations = 50;
+  const tolerance = 0.00001;
+  
+  for (let iter = 0; iter < maxIterations; iter++) {
+    let f = 0;
+    let df = 0;
+    
+    cashFlows.forEach((cf, t) => {
+      const divisor = Math.pow(1 + irr, t);
+      f += cf / divisor;
+      if (t > 0) {
+        df -= t * cf / Math.pow(1 + irr, t + 1);
+      }
+    });
+    
+    const newIrr = irr - f / df;
+    
+    if (Math.abs(newIrr - irr) < tolerance) {
+      irr = newIrr;
+      break;
+    }
+    irr = newIrr;
+    
+    if (irr < -0.99) irr = -0.99;
+    if (irr > 10) irr = 10;
+  }
+
+  // LCOC calculation
+  const totalCapex = capex * chargerCount;
+  const totalOpex = opex * capex * chargerCount * projectLife;
+  const totalCosts = totalCapex + totalOpex - stateRebate;
+  const totalKWh = totalAnnualKWh * projectLife;
+  const lcoc = totalKWh > 0 ? totalCosts / totalKWh : 0;
+
+  return {
+    npv: Math.round(npv),
+    irr: Math.round(irr * 10000) / 100, // percentage
+    lcoc: Math.round(lcoc * 1000) / 1000, // $/kWh
+    cashFlows
+  };
+}
+
 export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModalProps) {
   const [activeTab, setActiveTab] = useState("inputs");
+  const [realtimeMetrics, setRealtimeMetrics] = useState({
+    npv: 0,
+    irr: 0,
+    lcoc: 0,
+    cashFlows: [] as number[]
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -79,6 +172,17 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
       utilityRebate: project?.utilityRebate || "",
     },
   });
+
+  // Watch form values for real-time calculation
+  const watchedValues = form.watch();
+
+  // Calculate real-time metrics when form values change
+  useEffect(() => {
+    if (isNew) {
+      const metrics = calculateRealtimeDCF(watchedValues);
+      setRealtimeMetrics(metrics);
+    }
+  }, [watchedValues, isNew]);
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
@@ -496,15 +600,20 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
             </TabsContent>
 
             <TabsContent value="outputs" className="space-y-6">
-              {project && (
+              {(isNew || project) && (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card>
                       <CardContent className="p-4 text-center">
                         <p className="text-sm text-muted-foreground">Net Present Value</p>
                         <p className="text-2xl font-bold text-accent" data-testid="text-npv">
-                          {formatCurrency(project.npv)}
+                          {isNew 
+                            ? formatCurrency(realtimeMetrics.npv.toString())
+                            : formatCurrency(project?.npv || "0")}
                         </p>
+                        {isNew && (
+                          <Badge variant="secondary" className="mt-2">Live Preview</Badge>
+                        )}
                       </CardContent>
                     </Card>
                     
@@ -512,8 +621,13 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
                       <CardContent className="p-4 text-center">
                         <p className="text-sm text-muted-foreground">Internal Rate of Return</p>
                         <p className="text-2xl font-bold text-accent" data-testid="text-irr">
-                          {formatPercentage(project.irr)}
+                          {isNew 
+                            ? `${realtimeMetrics.irr.toFixed(2)}%`
+                            : formatPercentage(project?.irr || "0")}
                         </p>
+                        {isNew && (
+                          <Badge variant="secondary" className="mt-2">Live Preview</Badge>
+                        )}
                       </CardContent>
                     </Card>
                     
@@ -521,15 +635,28 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
                       <CardContent className="p-4 text-center">
                         <p className="text-sm text-muted-foreground">Levelized Cost of Charging</p>
                         <p className="text-2xl font-bold text-foreground" data-testid="text-lcoc">
-                          {project.lcoc ? `$${parseFloat(project.lcoc).toFixed(2)}/kWh` : "N/A"}
+                          {isNew
+                            ? `$${realtimeMetrics.lcoc.toFixed(3)}/kWh`
+                            : project?.lcoc ? `$${parseFloat(project.lcoc).toFixed(3)}/kWh` : "N/A"}
                         </p>
+                        {isNew && (
+                          <Badge variant="secondary" className="mt-2">Live Preview</Badge>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
                   
                   <div className="h-64">
-                    <CashFlowChart cashFlows={project.cashFlows} />
+                    <CashFlowChart cashFlows={isNew ? realtimeMetrics.cashFlows : project?.cashFlows || []} />
                   </div>
+                  
+                  {isNew && (
+                    <div className="bg-muted/50 p-4 rounded-lg">
+                      <p className="text-sm text-muted-foreground text-center">
+                        These values update in real-time as you change the input parameters. Save the project to finalize calculations.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </TabsContent>
