@@ -1,4 +1,4 @@
-import { evaluate } from "mathjs";
+// mathjs import removed - NPV calculation now implemented manually
 
 interface DCFInputs {
   capex: number;
@@ -28,7 +28,17 @@ export function calculateNPV(inputs: DCFInputs): number {
     let costs = inputs.capex * inputs.chargerCount * inputs.opex; // Annual OpEx
     cashFlows.push(revenue - costs);
   }
-  return evaluate(`npv(${JSON.stringify(cashFlows)}, ${inputs.discountRate || 0.10})`) - (inputs.capex * inputs.chargerCount); // Initial investment
+  
+  // Manual NPV calculation - mathjs doesn't have a built-in npv function
+  const discountRate = inputs.discountRate || 0.10;
+  const initialInvestment = inputs.capex * inputs.chargerCount;
+  
+  let npv = -initialInvestment; // Year 0: negative initial investment
+  for (let i = 0; i < cashFlows.length; i++) {
+    npv += cashFlows[i] / Math.pow(1 + discountRate, i + 1);
+  }
+  
+  return npv;
 }
 
 export function calculateDCF(inputs: DCFInputs): DCFResults {
