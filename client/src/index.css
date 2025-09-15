@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - Modern Professional Design */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -14,50 +14,52 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 248 250 252; /* slate-50 */
-  --foreground: 2 6 23; /* slate-950 */
-  --border: 226 232 240; /* slate-200 */
+  /* Modern Blue/Teal Design System - HSL Values */
+  --background: 220 23% 98%; /* Clean modern white */
+  --foreground: 222 47% 11%; /* High contrast dark */
+  --border: 215 16% 84%; /* Subtle but visible borders */
 
-  --card: 255 255 255; /* white */
-  --card-foreground: 2 6 23; /* slate-950 */
-  --card-border: 226 232 240; /* slate-200 */
+  --card: 0 0% 100%; /* Pure white cards */
+  --card-foreground: 222 47% 11%; /* High contrast text */
+  --card-border: 215 16% 84%; /* Consistent borders */
 
-  --sidebar: 255 255 255; /* white */
-  --sidebar-foreground: 2 6 23; /* slate-950 */
-  --sidebar-border: 226 232 240; /* slate-200 */
-  --sidebar-primary: 29 78 216; /* blue-700 */
-  --sidebar-primary-foreground: 248 250 252; /* slate-50 */
-  --sidebar-accent: 241 245 249; /* slate-100 */
-  --sidebar-accent-foreground: 2 6 23; /* slate-950 */
-  --sidebar-ring: 29 78 216; /* blue-700 */
+  --sidebar: 0 0% 100%; /* Clean sidebar */
+  --sidebar-foreground: 222 47% 11%; /* Clear text */
+  --sidebar-border: 215 16% 84%; /* Defined borders */
+  --sidebar-primary: 217 91% 50%; /* Darker electric blue for AA contrast */
+  --sidebar-primary-foreground: 0 0% 100%; /* White text */
+  --sidebar-accent: 210 20% 96%; /* Light accent */
+  --sidebar-accent-foreground: 222 47% 11%; /* Dark text */
+  --sidebar-ring: 217 91% 50%; /* Darker electric blue focus */
 
-  --popover: 255 255 255; /* white */
-  --popover-foreground: 2 6 23; /* slate-950 */
-  --popover-border: 226 232 240; /* slate-200 */
+  --popover: 0 0% 100%; /* Clean popover */
+  --popover-foreground: 222 47% 11%; /* Clear text */
+  --popover-border: 215 16% 84%; /* Visible border */
 
-  --primary: 29 78 216; /* blue-700 */
-  --primary-foreground: 248 250 252; /* slate-50 */
+  --primary: 217 91% 50%; /* Darker electric blue for AA contrast */
+  --primary-foreground: 0 0% 100%; /* White text */
 
-  --secondary: 100 116 139; /* slate-500 */
-  --secondary-foreground: 248 250 252; /* slate-50 */
+  --secondary: 215 14% 35%; /* Darker neutral secondary for contrast */
+  --secondary-foreground: 0 0% 100%; /* White text */
 
-  --muted: 241 245 249; /* slate-100 */
-  --muted-foreground: 71 85 105; /* slate-600 */
+  --muted: 210 20% 96%; /* Light muted background */
+  --muted-foreground: 220 9% 46%; /* Readable muted text */
 
-  --accent: 16 185 129; /* emerald-500 */
-  --accent-foreground: 255 255 255; /* white */
+  --accent: 158 64% 40%; /* Darker teal/green for AA contrast */
+  --accent-foreground: 0 0% 100%; /* White text */
 
-  --destructive: 239 68 68; /* red-500 */
-  --destructive-foreground: 248 250 252; /* slate-50 */
+  --destructive: 0 72% 41%; /* Darker red for AA contrast */
+  --destructive-foreground: 0 0% 100%; /* White text */
 
-  --input: 226 232 240; /* slate-200 */
-  --ring: 29 78 216; /* blue-700 */
+  --input: 215 16% 84%; /* Clear input borders */
+  --ring: 217 91% 50%; /* Darker electric blue focus ring */
   
-  --chart-1: 16 185 129; /* emerald-500 */
-  --chart-2: 59 130 246; /* blue-500 */
-  --chart-3: 168 85 247; /* purple-500 */
-  --chart-4: 251 146 60; /* orange-400 */
-  --chart-5: 239 68 68; /* red-500 */
+  /* Modern Chart Colors - AA Compliant */
+  --chart-1: 158 64% 40%; /* Darker teal for performance */
+  --chart-2: 217 91% 50%; /* Darker electric blue */
+  --chart-3: 271 81% 56%; /* Purple accent */
+  --chart-4: 28 100% 61%; /* Orange highlight */
+  --chart-5: 0 72% 41%; /* Darker red for negatives - AA compliant */
 
   --font-sans: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: Georgia, serif;
@@ -117,50 +119,52 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 2 6 23; /* slate-950 */
-  --foreground: 248 250 252; /* slate-50 */
-  --border: 30 41 59; /* slate-800 */
+  /* Modern Dark Mode - High Contrast Design */
+  --background: 222 47% 11%; /* Rich dark background */
+  --foreground: 220 14% 96%; /* Bright readable text */
+  --border: 217 19% 27%; /* Visible dark borders */
 
-  --card: 15 23 42; /* slate-900 */
-  --card-foreground: 248 250 252; /* slate-50 */
-  --card-border: 30 41 59; /* slate-800 */
+  --card: 222 47% 14%; /* Elevated card background */
+  --card-foreground: 220 14% 96%; /* Clear text on cards */
+  --card-border: 217 19% 27%; /* Consistent borders */
 
-  --sidebar: 15 23 42; /* slate-900 */
-  --sidebar-foreground: 248 250 252; /* slate-50 */
-  --sidebar-border: 30 41 59; /* slate-800 */
-  --sidebar-primary: 59 130 246; /* blue-500 */
-  --sidebar-primary-foreground: 15 23 42; /* slate-900 */
-  --sidebar-accent: 30 41 59; /* slate-800 */
-  --sidebar-accent-foreground: 248 250 252; /* slate-50 */
-  --sidebar-ring: 59 130 246; /* blue-500 */
+  --sidebar: 222 47% 14%; /* Clean dark sidebar */
+  --sidebar-foreground: 220 14% 96%; /* Bright text */
+  --sidebar-border: 217 19% 27%; /* Visible borders */
+  --sidebar-primary: 217 92% 60%; /* Bright electric blue */
+  --sidebar-primary-foreground: 222 47% 11%; /* Dark text on bright */
+  --sidebar-accent: 217 33% 17%; /* Subtle accent background */
+  --sidebar-accent-foreground: 220 14% 96%; /* Bright text */
+  --sidebar-ring: 217 92% 60%; /* Bright focus ring */
 
-  --popover: 15 23 42; /* slate-900 */
-  --popover-foreground: 248 250 252; /* slate-50 */
-  --popover-border: 30 41 59; /* slate-800 */
+  --popover: 222 47% 14%; /* Elevated popover */
+  --popover-foreground: 220 14% 96%; /* Clear text */
+  --popover-border: 217 19% 27%; /* Visible border */
 
-  --primary: 59 130 246; /* blue-500 */
-  --primary-foreground: 15 23 42; /* slate-900 */
+  --primary: 217 92% 60%; /* Electric blue primary */
+  --primary-foreground: 222 47% 11%; /* Dark text on bright */
 
-  --secondary: 71 85 105; /* slate-600 */
-  --secondary-foreground: 248 250 252; /* slate-50 */
+  --secondary: 215 17% 73%; /* Light secondary */
+  --secondary-foreground: 222 47% 11%; /* Dark text */
 
-  --muted: 30 41 59; /* slate-800 */
-  --muted-foreground: 148 163 184; /* slate-400 */
+  --muted: 217 33% 17%; /* Dark muted background */
+  --muted-foreground: 215 20% 65%; /* Readable muted text */
 
-  --accent: 34 197 94; /* green-500 */
-  --accent-foreground: 15 23 42; /* slate-900 */
+  --accent: 158 64% 52%; /* Teal accent stays same */
+  --accent-foreground: 222 47% 11%; /* Dark text on teal */
 
-  --destructive: 239 68 68; /* red-500 */
-  --destructive-foreground: 248 250 252; /* slate-50 */
+  --destructive: 0 72% 51%; /* Clear red */
+  --destructive-foreground: 220 14% 96%; /* Bright text */
 
-  --input: 30 41 59; /* slate-800 */
-  --ring: 59 130 246; /* blue-500 */
+  --input: 217 19% 27%; /* Dark input borders */
+  --ring: 217 92% 60%; /* Bright focus ring */
   
-  --chart-1: 34 197 94; /* green-500 */
-  --chart-2: 59 130 246; /* blue-500 */
-  --chart-3: 168 85 247; /* purple-500 */
-  --chart-4: 251 146 60; /* orange-400 */
-  --chart-5: 239 68 68; /* red-500 */
+  /* Consistent Chart Colors */
+  --chart-1: 158 64% 52%; /* Teal for performance */
+  --chart-2: 217 92% 60%; /* Bright electric blue */
+  --chart-3: 271 81% 56%; /* Purple accent */
+  --chart-4: 28 100% 61%; /* Orange highlight */
+  --chart-5: 0 72% 41%; /* Darker red for negatives - AA compliant */
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
