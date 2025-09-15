@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
-import * as math from 'mathjs'; // Import mathjs properly
+
+// Custom NPV calculation since mathjs doesn't have a direct npv function
+const calculateNPV = (cashFlows: number[], discountRate: number): number => {
+  let npv = 0;
+  for (let i = 0; i < cashFlows.length; i++) {
+    npv += cashFlows[i] / Math.pow(1 + discountRate, i + 1);
+  }
+  return npv;
+};
 
 const App: React.FC = () => {
   const [inputs, setInputs] = useState({
@@ -29,7 +37,7 @@ const App: React.FC = () => {
       flows.push(revenue - costs);
     }
     const initialInvestment = inputs.capEx * inputs.chargers;
-    const calculatedNpv = math.npv(flows, inputs.discountRate) - initialInvestment; // Use imported math
+    const calculatedNpv = calculateNPV(flows, inputs.discountRate) - initialInvestment;
     setCashFlows(flows);
     setNpv(calculatedNpv);
 
