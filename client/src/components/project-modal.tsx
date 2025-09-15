@@ -43,12 +43,33 @@ interface ProjectModalProps {
 }
 
 const formSchema = insertProjectSchema.extend({
-  capex: z.string().min(1, "CapEx is required"),
-  opex: z.string().min(1, "OpEx is required"),
-  peakUtilization: z.string().min(1, "Peak utilization is required"),
-  chargingRate: z.string().min(1, "Charging rate is required"),
+  capex: z.string().min(1, "CapEx is required")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 10000000; // Max $10M per charger
+    }, "CapEx must be between 0 and $10,000,000"),
+  opex: z.string().min(1, "OpEx is required")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 1000000; // Max $1M annual
+    }, "OpEx must be between 0 and $1,000,000"),
+  peakUtilization: z.string().min(1, "Peak utilization is required")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 100;
+    }, "Peak utilization must be between 0% and 100%"),
+  chargingRate: z.string().min(1, "Charging rate is required")
+    .refine((val) => {
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 10; // Max $10/kWh
+    }, "Charging rate must be between $0 and $10/kWh"),
   projectLife: z.number().min(5).max(20).optional(),
-  discountRate: z.string().optional(),
+  discountRate: z.string().optional()
+    .refine((val) => {
+      if (!val) return true;
+      const num = parseFloat(val);
+      return !isNaN(num) && num >= 0 && num <= 100;
+    }, "Discount rate must be between 0% and 100%"),
   lcfsCredits: z.string().optional(),
   stateRebate: z.string().optional(),
   energiizeRebate: z.string().optional(),
@@ -87,7 +108,8 @@ function calculateRealtimeDCF(values: any) {
   for (let year = 1; year <= projectLife; year++) {
     const revenue = totalAnnualKWh * chargingRate;
     const lcfsRevenue = totalAnnualKWh * 0.0004 * lcfsCredits;
-    const annualOpex = opex * capex * chargerCount; // OpEx as % of CapEx
+    // OpEx is already the annual value, not a percentage
+    const annualOpex = opex;
     const netCashFlow = revenue + lcfsRevenue - annualOpex;
     cashFlows.push(netCashFlow);
   }
@@ -115,6 +137,11 @@ function calculateRealtimeDCF(values: any) {
       }
     });
     
+    // Check for zero derivative to avoid division by zero
+    if (Math.abs(df) < 1e-10) {
+      break;
+    }
+    
     const newIrr = irr - f / df;
     
     if (Math.abs(newIrr - irr) < tolerance) {
@@ -129,15 +156,32 @@ function calculateRealtimeDCF(values: any) {
 
   // LCOC calculation
   const totalCapex = capex * chargerCount;
-  const totalOpex = opex * capex * chargerCount * projectLife;
+  // OpEx is already annual, multiply by project life
+  const totalOpex = opex * projectLife;
   const totalCosts = totalCapex + totalOpex - stateRebate;
   const totalKWh = totalAnnualKWh * projectLife;
   const lcoc = totalKWh > 0 ? totalCosts / totalKWh : 0;
 
+  // Apply database precision limits
+  const maxNPV = 9999999999.99;
+  const minNPV = -9999999999.99;
+  let boundedNPV = Math.max(minNPV, Math.min(maxNPV, npv));
+  boundedNPV = Math.round(boundedNPV * 100) / 100;
+
+  const maxIRR = 99.999;
+  const minIRR = -99.999;
+  let boundedIRR = Math.max(minIRR, Math.min(maxIRR, irr));
+  // Return IRR as percentage for display (multiply by 100)
+  boundedIRR = Math.round(boundedIRR * 10000) / 100;
+
+  const maxLCOC = 99.999;
+  let boundedLCOC = Math.min(maxLCOC, Math.max(0, lcoc));
+  boundedLCOC = Math.round(boundedLCOC * 1000) / 1000;
+
   return {
-    npv: Math.round(npv),
-    irr: Math.round(irr * 10000) / 100, // percentage
-    lcoc: Math.round(lcoc * 1000) / 1000, // $/kWh
+    npv: boundedNPV,
+    irr: boundedIRR, // Return as percentage for display
+    lcoc: boundedLCOC,
     cashFlows
   };
 }

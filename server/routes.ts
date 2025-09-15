@@ -34,6 +34,18 @@ function calculateDCF(inputs: {
     discountRate = 0.10,
   } = inputs;
 
+  console.log("DCF Calculation Inputs:", {
+    capex,
+    opex,
+    chargerCount,
+    peakUtilization,
+    chargingRate,
+    lcfsCredits,
+    stateRebate,
+    projectLife,
+    discountRate,
+  });
+
   // Calculate cash flows with improved formulas
   const cashFlows: number[] = [];
   const chargerPowerKW = 350; // DC Ultra Fast charging
@@ -50,7 +62,8 @@ function calculateDCF(inputs: {
   for (let year = 1; year <= projectLife; year++) {
     const revenue = totalAnnualKWh * chargingRate;
     const lcfsRevenue = totalAnnualKWh * 0.0004 * lcfsCredits; // LCFS calculation
-    const annualOpex = opex * capex * chargerCount; // OpEx as % of CapEx
+    // OpEx is already the annual value, not a percentage
+    const annualOpex = opex;
     const netCashFlow = revenue + lcfsRevenue - annualOpex;
     cashFlows.push(netCashFlow);
   }
@@ -78,6 +91,11 @@ function calculateDCF(inputs: {
       }
     });
     
+    // Check for zero derivative to avoid division by zero
+    if (Math.abs(df) < 1e-10) {
+      break;
+    }
+    
     const newIrr = irr - f / df;
     
     if (Math.abs(newIrr - irr) < tolerance) {
@@ -93,15 +111,48 @@ function calculateDCF(inputs: {
 
   // LCOC calculation (Levelized Cost of Charging)
   const totalCapex = capex * chargerCount;
-  const totalOpex = opex * capex * chargerCount * projectLife; // OpEx as % of CapEx
+  // OpEx is already annual, multiply by project life
+  const totalOpex = opex * projectLife;
   const totalCosts = totalCapex + totalOpex - stateRebate;
   const totalKWh = totalAnnualKWh * projectLife;
   const lcoc = totalKWh > 0 ? totalCosts / totalKWh : 0;
 
+  // Apply database precision limits
+  // NPV: max 9,999,999,999.99 (precision 12, scale 2)
+  const maxNPV = 9999999999.99;
+  const minNPV = -9999999999.99;
+  let boundedNPV = Math.max(minNPV, Math.min(maxNPV, npv));
+  boundedNPV = Math.round(boundedNPV * 100) / 100; // Round to 2 decimal places
+
+  // IRR: max 99.999 (precision 5, scale 3) - stored as percentage (15 for 15%)
+  // Convert from decimal to percentage for storage
+  const irrPercentage = irr * 100;
+  const maxIRR = 99.999;
+  const minIRR = -99.999;
+  let boundedIRR = Math.max(minIRR, Math.min(maxIRR, irrPercentage));
+  boundedIRR = Math.round(boundedIRR * 1000) / 1000; // Round to 3 decimal places
+
+  // LCOC: max 99.999 (precision 5, scale 3)
+  const maxLCOC = 99.999;
+  let boundedLCOC = Math.min(maxLCOC, Math.max(0, lcoc));
+  boundedLCOC = Math.round(boundedLCOC * 1000) / 1000; // Round to 3 decimal places
+
+  console.log("DCF Calculation Results (before bounds):", {
+    npv,
+    irr: irrPercentage, // Show as percentage
+    lcoc,
+  });
+
+  console.log("DCF Calculation Results (after bounds):", {
+    npv: boundedNPV,
+    irr: boundedIRR, // Show as percentage
+    lcoc: boundedLCOC,
+  });
+
   return {
-    npv: Math.round(npv),
-    irr: Math.round(irr * 10000) / 100, // percentage with 2 decimal places
-    lcoc: Math.round(lcoc * 1000) / 1000, // $/kWh with 3 decimal places
+    npv: boundedNPV,
+    irr: boundedIRR, // Store as percentage (15 for 15%)
+    lcoc: boundedLCOC,
     cashFlows
   };
 }
