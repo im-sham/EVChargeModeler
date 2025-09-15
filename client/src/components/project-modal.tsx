@@ -217,16 +217,42 @@ export function ProjectModal({ open, onOpenChange, project, isNew }: ProjectModa
     },
   });
 
-  // Watch form values for real-time calculation
-  const watchedValues = form.watch();
+  // Watch specific form values for real-time calculation
+  const capex = form.watch("capex");
+  const opex = form.watch("opex");
+  const chargerCount = form.watch("chargerCount");
+  const peakUtilization = form.watch("peakUtilization");
+  const chargingRate = form.watch("chargingRate");
+  const projectLife = form.watch("projectLife");
+  const discountRate = form.watch("discountRate");
+  const lcfsCredits = form.watch("lcfsCredits");
+  const stateRebate = form.watch("stateRebate");
+  const energiizeRebate = form.watch("energiizeRebate");
+  const utilityRebate = form.watch("utilityRebate");
 
   // Calculate real-time metrics when form values change
   useEffect(() => {
     if (isNew) {
-      const metrics = calculateRealtimeDCF(watchedValues);
+      const values = {
+        name: "",
+        description: "",
+        capex,
+        opex,
+        chargerCount,
+        chargerType: "dc-fast",
+        peakUtilization,
+        chargingRate,
+        projectLife,
+        discountRate,
+        lcfsCredits,
+        stateRebate,
+        energiizeRebate,
+        utilityRebate,
+      };
+      const metrics = calculateRealtimeDCF(values);
       setRealtimeMetrics(metrics);
     }
-  }, [watchedValues, isNew]);
+  }, [isNew, capex, opex, chargerCount, peakUtilization, chargingRate, projectLife, discountRate, lcfsCredits, stateRebate, energiizeRebate, utilityRebate]);
 
   const createMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {

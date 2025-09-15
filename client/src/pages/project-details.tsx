@@ -221,7 +221,7 @@ export default function ProjectDetails() {
                         </Badge>
                       </div>
                       
-                      {doc.extractedExpenses && Array.isArray(doc.extractedExpenses) && (doc.extractedExpenses as any[]).length > 0 && (
+                      {doc.extractedExpenses && Array.isArray(doc.extractedExpenses) && (doc.extractedExpenses as any[]).length > 0 ? (
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-muted-foreground">Expense Breakdown:</p>
                           <div className="space-y-2">
@@ -265,7 +265,7 @@ export default function ProjectDetails() {
                             </div>
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                   
