@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Chart from 'chart.js/auto';
+import * as math from 'mathjs'; // Import mathjs properly
 
 const App: React.FC = () => {
   const [inputs, setInputs] = useState({
@@ -18,10 +19,9 @@ const App: React.FC = () => {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<Chart | null>(null);
 
-  // Calculate NPV and cash flows
   useEffect(() => {
     const annualKWh = inputs.chargers * inputs.utilization * 365 * 1000;
-    const lcfsCredits = (annualKWh * 3.6 * 0.6) / 1000000; // MJ to credits (approx.)
+    const lcfsCredits = (annualKWh * 3.6 * 0.6) / 1000000;
     const flows: number[] = [];
     for (let t = 0; t < inputs.horizon; t++) {
       const revenue = (annualKWh * inputs.revenuePerKWh) + (lcfsCredits * inputs.lcfsCreditValue);
@@ -29,27 +29,15 @@ const App: React.FC = () => {
       flows.push(revenue - costs);
     }
     const initialInvestment = inputs.capEx * inputs.chargers;
-    const calculatedNpv = (window as any).math.npv(flows, inputs.discountRate) - initialInvestment;
+    const calculatedNpv = math.npv(flows, inputs.discountRate) - initialInvestment; // Use imported math
     setCashFlows(flows);
     setNpv(calculatedNpv);
 
-    // Update chart
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
+    if (chartInstance.current) chartInstance.current.destroy();
     if (chartRef.current) {
       chartInstance.current = new Chart(chartRef.current, {
         type: 'line',
-        data: {
-          labels: Array.from({ length: inputs.horizon }, (_, i) => `Year ${i + 1}`),
-          datasets: [{
-            label: 'Annual Cash Flow ($)',
-            data: flows,
-            borderColor: '#4B5EAA',
-            backgroundColor: 'rgba(75, 94, 170, 0.2)',
-            fill: true,
-          }],
-        },
+        data: { labels: Array.from({ length: inputs.horizon }, (_, i) => `Year ${i + 1}`), datasets: [{ label: 'Annual Cash Flow ($)', data: flows, borderColor: '#4B5EAA', backgroundColor: 'rgba(75, 94, 170, 0.2)', fill: true }] },
         options: { responsive: true, scales: { y: { beginAtZero: false } } },
       });
     }
@@ -63,10 +51,7 @@ const App: React.FC = () => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     try {
-      const response = await fetch('/upload-sow', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch('/api/upload-sow', { method: 'POST', body: formData }); // Proxy to /api
       const data = await response.json();
       setSowExpenses(data.expenses || []);
     } catch (error) {
@@ -77,51 +62,36 @@ const App: React.FC = () => {
   return (
     <div className="p-4 max-w-4xl mx-auto bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold mb-6 text-center text-blue-600">EVChargeModeler</h1>
-
-      {/* Model Inputs Wizard */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Project Inputs</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Object.entries(inputs).map(([key, value]) => (
             <div key={key}>
               <label className="block text-sm font-medium mb-1">
-                {key === 'chargers' ? 'Chargers (4-8):' :
-                 key === 'capEx' ? 'CapEx ($/charger):' :
-                 key === 'opEx' ? 'OpEx (% of CapEx):' :
-                 key === 'revenuePerKWh' ? 'Revenue ($/kWh):' :
-                 key === 'utilization' ? 'Utilization (%):' :
-                 key === 'horizon' ? 'Horizon (years):' :
-                 key === 'discountRate' ? 'Discount Rate (%):' :
-                 'LCFS Credit Value ($/credit):'}
+                {key === 'chargers' ? 'Chargers (4-8):' : key === 'capEx' ? 'CapEx ($/charger):' : key === 'opEx' ? 'OpEx (% of CapEx):' : key === 'revenuePerKWh' ? 'Revenue ($/kWh):' : key === 'utilization' ? 'Utilization (%):' : key === 'horizon' ? 'Horizon (years):' : key === 'discountRate' ? 'Discount Rate (%):' : 'LCFS Credit Value ($/credit):'}
               </label>
               <input
                 type="number"
-                value={key === 'opEx' || key === 'utilization' || key === 'discountRate' ? value * 100 : value}
-                onChange={(e) => handleInputChange(key, key === 'opEx' || key === 'utilization' || key === 'discountRate' ? Number(e.target.value) / 100 : Number(e.target.value))}
+                value={['opEx', 'utilization', 'discountRate'].includes(key) ? value * 100 : value}
+                onChange={(e) => handleInputChange(key, ['opEx', 'utilization', 'discountRate'].includes(key) ? Number(e.target.value) / 100 : Number(e.target.value))}
                 className="w-full border border-gray-300 p-2 rounded"
                 min={key === 'chargers' ? 4 : undefined}
                 max={key === 'chargers' ? 8 : undefined}
-                step={key === 'opEx' || key === 'discountRate' ? 0.1 : key === 'revenuePerKWh' ? 0.01 : 1}
+                step={['opEx', 'discountRate'].includes(key) ? 0.1 : key === 'revenuePerKWh' ? 0.01 : 1}
               />
             </div>
           ))}
         </div>
       </div>
-
-      {/* Outputs */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Financial Outputs</h2>
         <p className="text-lg mb-2">NPV: <span className={npv >= 0 ? 'text-green-600' : 'text-red-600'}>{npv.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span></p>
         <p className="text-sm text-gray-600">Levelized Cost of Charging (LCOC): ~${((inputs.capEx * inputs.chargers * inputs.opEx) / (inputs.chargers * inputs.utilization * 365 * 1000)).toFixed(2)}/kWh (approx., post-incentives)</p>
       </div>
-
-      {/* Cash Flow Chart */}
       <div className="bg-white p-6 rounded-lg shadow-md mb-6">
         <h2 className="text-xl font-semibold mb-4">Cash Flow Over Time</h2>
         <canvas ref={chartRef} className="w-full h-64"></canvas>
       </div>
-
-      {/* SOW Upload */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Upload SOW for Comparison</h2>
         <form onSubmit={handleSowUpload} encType="multipart/form-data" className="space-y-4">
